@@ -4,6 +4,8 @@ let currentResult = null;
 let isListening = false;
 let isSpeaking = false;
 let recognition = null;
+let speechErrorCount = 0;
+let speechDisabled = false;
 
 // Initialize Speech Recognition
 function initSpeechRecognition() {
@@ -44,55 +46,62 @@ function initSpeechRecognition() {
         isListening = false;
         updateMicButton();
         
+        // Track persistent network errors
+        if (event.error === 'network') {
+            speechErrorCount++;
+            if (speechErrorCount >= 2) {
+                speechDisabled = true;
+                showInfoBanner();
+                hideMicStatus();
+                alert('Voice input is unavailable due to network restrictions. This is a common issue with the Web Speech API and is not related to your internet connection. Please use the text search box instead.');
+                return;
+            }
+        }
+        
         let errorMessage = '';
         let troubleshootingTip = '';
         
         switch(event.error) {
             case 'not-allowed':
             case 'permission-denied':
-                errorMessage = 'Microphone access denied. Please allow microphone access in your browser settings.';
-                troubleshootingTip = 'Click the lock icon in your address bar to check permissions.';
+                errorMessage = 'Microphone access denied.';
+                troubleshootingTip = 'Click the lock icon in your address bar to allow microphone access.';
                 break;
             case 'no-speech':
-                errorMessage = 'No speech detected. Please try again and speak clearly.';
+                errorMessage = 'No speech detected. Try speaking louder and more clearly.';
                 break;
             case 'network':
-                errorMessage = 'Network error - This is usually caused by browser/network restrictions, NOT your internet.';
-                troubleshootingTip = 'Solutions to try: 1) Use Chrome browser 2) Disable VPN/proxy 3) Turn off ad-blockers 4) Try incognito mode 5) Use different WiFi network 6) Deploy to custom domain instead of GitHub Pages subdomain.';
-                console.log('=== NETWORK ERROR TROUBLESHOOTING ===');
-                console.log('This error means the browser cannot reach Google\'s speech API.');
-                console.log('Common causes:');
+                errorMessage = 'Voice input unavailable - network restriction.';
+                troubleshootingTip = 'This is a known Web Speech API limitation. Please use the text search box.';
+                console.log('=== NETWORK ERROR INFO ===');
+                console.log('The Web Speech API requires communication with Google servers.');
+                console.log('This error commonly occurs due to:');
+                console.log('  - Corporate/school network restrictions');
                 console.log('  - VPN or proxy blocking API calls');
-                console.log('  - Browser extensions (ad blockers, privacy tools)');
-                console.log('  - Corporate firewall blocking external APIs');
-                console.log('  - GitHub Pages subdomain CORS issues');
-                console.log('  - Antivirus software blocking connections');
+                console.log('  - Browser extensions interfering');
+                console.log('  - Firewall/security software blocking');
+                console.log('  - GitHub Pages subdomain CORS restrictions');
                 console.log('');
-                console.log('Current environment:');
-                console.log('  - URL:', window.location.href);
-                console.log('  - Protocol:', window.location.protocol);
-                console.log('  - Browser:', navigator.userAgent);
-                console.log('  - Online:', navigator.onLine);
-                console.log('');
-                console.log('Try deploying to Netlify, Vercel, or using a custom domain.');
+                console.log('This is NOT related to your internet connection.');
+                console.log('The typed search works perfectly - please use that instead.');
                 break;
             case 'aborted':
                 errorMessage = 'Speech recognition stopped.';
                 break;
             case 'audio-capture':
-                errorMessage = 'No microphone detected. Please connect a microphone.';
+                errorMessage = 'No microphone detected.';
                 break;
             case 'service-not-allowed':
-                errorMessage = 'Speech service not allowed.';
-                troubleshootingTip = 'Try using Chrome or Edge browser on a standard network.';
+                errorMessage = 'Speech service not allowed by browser.';
+                troubleshootingTip = 'Try Chrome or Edge browser.';
                 break;
             default:
                 errorMessage = `Error: ${event.error}`;
-                troubleshootingTip = 'Please try typing your search instead.';
+                troubleshootingTip = 'Please use the text search box.';
         }
         
-        showMicStatus(`❌ ${errorMessage} ${troubleshootingTip ? troubleshootingTip : ''}`);
-        setTimeout(() => hideMicStatus(), 10000);
+        showMicStatus(`❌ ${errorMessage} ${troubleshootingTip}`);
+        setTimeout(() => hideMicStatus(), 8000);
     };
 
     recognition.onend = () => {
@@ -130,11 +139,29 @@ function hideMicStatus() {
     status.classList.add('hidden');
 }
 
+function showInfoBanner() {
+    const banner = document.getElementById('infoBanner');
+    banner.classList.remove('hidden');
+}
+
+function hideInfoBanner() {
+    const banner = document.getElementById('infoBanner');
+    banner.classList.add('hidden');
+}
+
 // Start listening
 function startListening() {
+    // If speech is disabled due to persistent errors, show message
+    if (speechDisabled) {
+        alert('Voice input is unavailable on this network/browser. Please use the text search box instead.');
+        return;
+    }
+
     if (!recognition) {
         if (!initSpeechRecognition()) {
-            alert('Speech recognition is not supported in this browser. Please try Chrome, Edge, or Safari.\n\nNote: Speech recognition requires an internet connection to work.');
+            alert('Speech recognition is not supported in this browser.\n\nPlease use the text search box instead.');
+            speechDisabled = true;
+            showInfoBanner();
             return;
         }
     }
@@ -145,25 +172,10 @@ function startListening() {
     }
 
     // Log diagnostic info
-    console.log('=== Speech Recognition Diagnostics ===');
+    console.log('=== Speech Recognition Attempt ===');
     console.log('Online status:', navigator.onLine);
     console.log('Protocol:', window.location.protocol);
-    console.log('Hostname:', window.location.hostname);
-    console.log('Full URL:', window.location.href);
-    console.log('User Agent:', navigator.userAgent);
-    console.log('Language:', navigator.language);
-
-    // Check if online
-    if (!navigator.onLine) {
-        showMicStatus('❌ No internet connection detected. Please check your connection.');
-        setTimeout(() => hideMicStatus(), 5000);
-        return;
-    }
-
-    // Check HTTPS
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-        showMicStatus('⚠️ Warning: Speech recognition works best with HTTPS.');
-    }
+    console.log('URL:', window.location.href);
 
     try {
         console.log('Starting speech recognition...');
@@ -172,19 +184,18 @@ function startListening() {
         console.error('Error starting recognition:', error);
         if (error.name === 'InvalidStateError') {
             console.log('InvalidStateError: Recognition already started, attempting to restart...');
-            // Recognition is already started, stop and restart
             recognition.stop();
             setTimeout(() => {
                 try {
                     recognition.start();
                 } catch (e) {
                     console.error('Retry failed:', e);
-                    showMicStatus('❌ Could not start microphone. Please refresh the page and try again.');
+                    showMicStatus('❌ Could not start microphone. Please try the text search.');
                     setTimeout(() => hideMicStatus(), 5000);
                 }
             }, 100);
         } else {
-            showMicStatus('❌ Could not start microphone. Please try again.');
+            showMicStatus('❌ Could not start microphone. Please use the text search box.');
             setTimeout(() => hideMicStatus(), 3000);
         }
     }
