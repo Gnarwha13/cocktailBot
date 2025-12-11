@@ -1,205 +1,7 @@
 // Application State
 let cocktails = [...cocktailDatabase];
 let currentResult = null;
-let isListening = false;
 let isSpeaking = false;
-let recognition = null;
-let speechErrorCount = 0;
-let speechDisabled = false;
-
-// Initialize Speech Recognition
-function initSpeechRecognition() {
-    if ('webkitSpeechRecognition' in window) {
-        recognition = new webkitSpeechRecognition();
-    } else if ('SpeechRecognition' in window) {
-        recognition = new SpeechRecognition();
-    } else {
-        console.log('Speech recognition not supported');
-        return false;
-    }
-
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = 'en-US';
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-        console.log('Speech recognition started');
-        isListening = true;
-        updateMicButton();
-        showMicStatus('🎤 Listening... Speak now!');
-    };
-
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        const confidence = event.results[0][0].confidence;
-        console.log('Heard:', transcript, 'Confidence:', confidence);
-        document.getElementById('searchInput').value = transcript;
-        searchCocktails(transcript);
-        showMicStatus(`✓ Heard: "${transcript}"`);
-        setTimeout(() => hideMicStatus(), 3000);
-    };
-
-    recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        console.error('Full error object:', event);
-        isListening = false;
-        updateMicButton();
-        
-        // Track persistent network errors
-        if (event.error === 'network') {
-            speechErrorCount++;
-            if (speechErrorCount >= 2) {
-                speechDisabled = true;
-                showInfoBanner();
-                hideMicStatus();
-                alert('Voice input is unavailable due to network restrictions. This is a common issue with the Web Speech API and is not related to your internet connection. Please use the text search box instead.');
-                return;
-            }
-        }
-        
-        let errorMessage = '';
-        let troubleshootingTip = '';
-        
-        switch(event.error) {
-            case 'not-allowed':
-            case 'permission-denied':
-                errorMessage = 'Microphone access denied.';
-                troubleshootingTip = 'Click the lock icon in your address bar to allow microphone access.';
-                break;
-            case 'no-speech':
-                errorMessage = 'No speech detected. Try speaking louder and more clearly.';
-                break;
-            case 'network':
-                errorMessage = 'Voice input unavailable - network restriction.';
-                troubleshootingTip = 'This is a known Web Speech API limitation. Please use the text search box.';
-                console.log('=== NETWORK ERROR INFO ===');
-                console.log('The Web Speech API requires communication with Google servers.');
-                console.log('This error commonly occurs due to:');
-                console.log('  - Corporate/school network restrictions');
-                console.log('  - VPN or proxy blocking API calls');
-                console.log('  - Browser extensions interfering');
-                console.log('  - Firewall/security software blocking');
-                console.log('  - GitHub Pages subdomain CORS restrictions');
-                console.log('');
-                console.log('This is NOT related to your internet connection.');
-                console.log('The typed search works perfectly - please use that instead.');
-                break;
-            case 'aborted':
-                errorMessage = 'Speech recognition stopped.';
-                break;
-            case 'audio-capture':
-                errorMessage = 'No microphone detected.';
-                break;
-            case 'service-not-allowed':
-                errorMessage = 'Speech service not allowed by browser.';
-                troubleshootingTip = 'Try Chrome or Edge browser.';
-                break;
-            default:
-                errorMessage = `Error: ${event.error}`;
-                troubleshootingTip = 'Please use the text search box.';
-        }
-        
-        showMicStatus(`❌ ${errorMessage} ${troubleshootingTip}`);
-        setTimeout(() => hideMicStatus(), 8000);
-    };
-
-    recognition.onend = () => {
-        console.log('Speech recognition ended');
-        isListening = false;
-        updateMicButton();
-    };
-
-    return true;
-}
-
-// Update microphone button appearance
-function updateMicButton() {
-    const micBtn = document.getElementById('micBtn');
-    const micText = document.getElementById('micText');
-    
-    if (isListening) {
-        micBtn.className = 'flex-1 sm:flex-none px-6 py-3 rounded-lg transition flex items-center justify-center gap-2 touch-manipulation bg-red-500 text-white animate-pulse';
-        if (micText) micText.textContent = 'Listening...';
-    } else {
-        micBtn.className = 'flex-1 sm:flex-none px-6 py-3 rounded-lg transition flex items-center justify-center gap-2 touch-manipulation bg-white/20 hover:bg-white/30 active:bg-white/40 text-white';
-        if (micText) micText.textContent = 'Voice';
-    }
-}
-
-// Show/hide mic status
-function showMicStatus(message) {
-    const status = document.getElementById('micStatus');
-    status.textContent = message;
-    status.classList.remove('hidden');
-}
-
-function hideMicStatus() {
-    const status = document.getElementById('micStatus');
-    status.classList.add('hidden');
-}
-
-function showInfoBanner() {
-    const banner = document.getElementById('infoBanner');
-    banner.classList.remove('hidden');
-}
-
-function hideInfoBanner() {
-    const banner = document.getElementById('infoBanner');
-    banner.classList.add('hidden');
-}
-
-// Start listening
-function startListening() {
-    // If speech is disabled due to persistent errors, show message
-    if (speechDisabled) {
-        alert('Voice input is unavailable on this network/browser. Please use the text search box instead.');
-        return;
-    }
-
-    if (!recognition) {
-        if (!initSpeechRecognition()) {
-            alert('Speech recognition is not supported in this browser.\n\nPlease use the text search box instead.');
-            speechDisabled = true;
-            showInfoBanner();
-            return;
-        }
-    }
-
-    if (isListening) {
-        recognition.stop();
-        return;
-    }
-
-    // Log diagnostic info
-    console.log('=== Speech Recognition Attempt ===');
-    console.log('Online status:', navigator.onLine);
-    console.log('Protocol:', window.location.protocol);
-    console.log('URL:', window.location.href);
-
-    try {
-        console.log('Starting speech recognition...');
-        recognition.start();
-    } catch (error) {
-        console.error('Error starting recognition:', error);
-        if (error.name === 'InvalidStateError') {
-            console.log('InvalidStateError: Recognition already started, attempting to restart...');
-            recognition.stop();
-            setTimeout(() => {
-                try {
-                    recognition.start();
-                } catch (e) {
-                    console.error('Retry failed:', e);
-                    showMicStatus('❌ Could not start microphone. Please try the text search.');
-                    setTimeout(() => hideMicStatus(), 5000);
-                }
-            }, 100);
-        } else {
-            showMicStatus('❌ Could not start microphone. Please use the text search box.');
-            setTimeout(() => hideMicStatus(), 3000);
-        }
-    }
-}
 
 // Search cocktails
 function searchCocktails(query) {
@@ -425,9 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Microphone
-    document.getElementById('micBtn').addEventListener('click', startListening);
-
     // Result actions
     document.getElementById('speakBtn').addEventListener('click', speakRecipe);
     document.getElementById('closeBtn').addEventListener('click', hideSearchResult);
@@ -436,15 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('addBtn').addEventListener('click', showAddForm);
     document.getElementById('submitBtn').addEventListener('click', addCocktail);
     document.getElementById('cancelBtn').addEventListener('click', hideAddForm);
-
-    // Initialize speech recognition on page load
-    initSpeechRecognition();
 });
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     stopSpeaking();
-    if (recognition && isListening) {
-        recognition.stop();
-    }
 });
