@@ -71,14 +71,25 @@
                     
                     <div>
                         <label class="text-white text-sm font-semibold mb-2 block">Filter by Ingredients:</label>
-                        <div class="flex flex-wrap gap-2 mb-2" id="ingredientFilters"></div>
-                        <div class="flex gap-2 items-center">
+                        <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                            <select id="ingredientDropdown" class="flex-1 px-3 py-2 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                <option value="">Select an ingredient...</option>
+                            </select>
+                            <button id="addIngredientBtn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm transition">
+                                Add
+                            </button>
+                        </div>
+                        
+                        <!-- Selected ingredients -->
+                        <div id="selectedIngredients" class="flex flex-wrap gap-2 mt-3 min-h-[2rem]"></div>
+                        
+                        <div class="flex gap-2 items-center mt-2">
                             <label class="text-white text-xs">Match:</label>
                             <button id="filterLogicBtn" class="px-3 py-1 rounded-lg bg-white/20 text-white text-xs hover:bg-white/30 transition">
                                 <span id="filterLogicText">ANY</span> (OR)
                             </button>
                             <button id="clearFiltersBtn" class="px-3 py-1 rounded-lg bg-red-500/80 text-white text-xs hover:bg-red-600 transition">
-                                Clear
+                                Clear All
                             </button>
                         </div>
                     </div>
@@ -90,45 +101,7 @@
             </div>
 
             <!-- Search Result -->
-            <div id="searchResult" class="hidden bg-white rounded-2xl p-6 sm:p-8 mb-6 shadow-2xl">
-                <div class="flex justify-between items-start mb-4">
-                    <h2 id="cocktailName" class="text-2xl sm:text-3xl font-bold text-purple-900"></h2>
-                    <div class="flex gap-2">
-                        <button
-                            id="speakBtn"
-                            class="p-2 rounded-lg transition touch-manipulation text-purple-600 hover:bg-purple-100 active:bg-purple-200"
-                            title="Read recipe aloud"
-                        >
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-                            </svg>
-                        </button>
-                        <button
-                            id="closeBtn"
-                            class="text-gray-400 hover:text-gray-600 active:text-gray-700 p-2 touch-manipulation"
-                        >
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path d="M18 6 6 18"></path>
-                                <path d="m6 6 12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <h3 class="text-base sm:text-lg font-semibold text-purple-800 mb-2">Ingredients</h3>
-                    <ul id="ingredientsList" class="space-y-1"></ul>
-                </div>
-
-                <div class="mb-4">
-                    <h3 class="text-base sm:text-lg font-semibold text-purple-800 mb-2">Instructions</h3>
-                    <p id="instructionsText" class="text-gray-700 text-sm sm:text-base"></p>
-                </div>
-
-                <div id="tagsContainer" class="flex flex-wrap gap-2"></div>
-            </div>
+            <div id="searchResults" class="space-y-4 mb-6"></div>
 
             <!-- Add Cocktail Button -->
             <button
