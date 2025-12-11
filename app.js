@@ -25,49 +25,64 @@ function initSpeechRecognition() {
         console.log('Speech recognition started');
         isListening = true;
         updateMicButton();
-        showMicStatus('Listening... Speak now!');
+        showMicStatus('🎤 Listening... Speak now!');
     };
 
     recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        console.log('Heard:', transcript);
+        const confidence = event.results[0][0].confidence;
+        console.log('Heard:', transcript, 'Confidence:', confidence);
         document.getElementById('searchInput').value = transcript;
         searchCocktails(transcript);
-        showMicStatus(`Heard: "${transcript}"`);
+        showMicStatus(`✓ Heard: "${transcript}"`);
         setTimeout(() => hideMicStatus(), 3000);
     };
 
     recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
+        console.error('Full error object:', event);
         isListening = false;
         updateMicButton();
         
-        let errorMessage = 'Error: ';
+        let errorMessage = '';
+        let troubleshootingTip = '';
+        
         switch(event.error) {
             case 'not-allowed':
             case 'permission-denied':
-                errorMessage += 'Microphone access denied. Please allow microphone access in your browser settings.';
+                errorMessage = 'Microphone access denied. Please allow microphone access in your browser settings.';
+                troubleshootingTip = 'Click the lock icon in your address bar to check permissions.';
                 break;
             case 'no-speech':
-                errorMessage += 'No speech detected. Please try again.';
+                errorMessage = 'No speech detected. Please try again and speak clearly.';
                 break;
             case 'network':
-                errorMessage += 'Speech recognition requires an internet connection. Please check your connection and try again.';
+                errorMessage = 'Network error occurred.';
+                troubleshootingTip = 'This can happen due to: firewall/VPN blocking, corporate network restrictions, or temporary Google API issues. Try: 1) Disabling VPN 2) Using a different network 3) Waiting a moment and trying again.';
+                console.log('Network error troubleshooting:');
+                console.log('- Check if other Google services work');
+                console.log('- Try disabling browser extensions');
+                console.log('- Check firewall/antivirus settings');
+                console.log('- Current URL:', window.location.href);
+                console.log('- Protocol:', window.location.protocol);
                 break;
             case 'aborted':
                 errorMessage = 'Speech recognition stopped.';
                 break;
             case 'audio-capture':
-                errorMessage += 'No microphone detected. Please connect a microphone and try again.';
+                errorMessage = 'No microphone detected. Please connect a microphone.';
                 break;
             case 'service-not-allowed':
-                errorMessage += 'Speech recognition service is not allowed. This may be due to browser security settings.';
+                errorMessage = 'Speech service not allowed.';
+                troubleshootingTip = 'Try using Chrome or Edge browser on a standard network.';
                 break;
             default:
-                errorMessage += event.error + '. Please try typing your search instead.';
+                errorMessage = `Error: ${event.error}`;
+                troubleshootingTip = 'Please try typing your search instead.';
         }
-        showMicStatus(errorMessage);
-        setTimeout(() => hideMicStatus(), 5000);
+        
+        showMicStatus(`❌ ${errorMessage} ${troubleshootingTip ? troubleshootingTip : ''}`);
+        setTimeout(() => hideMicStatus(), 8000);
     };
 
     recognition.onend = () => {
@@ -119,30 +134,47 @@ function startListening() {
         return;
     }
 
+    // Log diagnostic info
+    console.log('=== Speech Recognition Diagnostics ===');
+    console.log('Online status:', navigator.onLine);
+    console.log('Protocol:', window.location.protocol);
+    console.log('Hostname:', window.location.hostname);
+    console.log('Full URL:', window.location.href);
+    console.log('User Agent:', navigator.userAgent);
+    console.log('Language:', navigator.language);
+
     // Check if online
     if (!navigator.onLine) {
-        showMicStatus('Error: No internet connection. Speech recognition requires internet access.');
+        showMicStatus('❌ No internet connection detected. Please check your connection.');
         setTimeout(() => hideMicStatus(), 5000);
         return;
     }
 
+    // Check HTTPS
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        showMicStatus('⚠️ Warning: Speech recognition works best with HTTPS.');
+    }
+
     try {
+        console.log('Starting speech recognition...');
         recognition.start();
     } catch (error) {
         console.error('Error starting recognition:', error);
         if (error.name === 'InvalidStateError') {
+            console.log('InvalidStateError: Recognition already started, attempting to restart...');
             // Recognition is already started, stop and restart
             recognition.stop();
             setTimeout(() => {
                 try {
                     recognition.start();
                 } catch (e) {
-                    showMicStatus('Error: Could not start microphone. Please try again.');
-                    setTimeout(() => hideMicStatus(), 3000);
+                    console.error('Retry failed:', e);
+                    showMicStatus('❌ Could not start microphone. Please refresh the page and try again.');
+                    setTimeout(() => hideMicStatus(), 5000);
                 }
             }, 100);
         } else {
-            showMicStatus('Error: Could not start microphone. Please try again.');
+            showMicStatus('❌ Could not start microphone. Please try again.');
             setTimeout(() => hideMicStatus(), 3000);
         }
     }
