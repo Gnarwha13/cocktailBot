@@ -13,48 +13,94 @@ function initializeIngredients() {
         cocktail.ingredients.forEach(ing => {
             // Extract main ingredient name (remove measurements)
             const mainIngredient = ing.toLowerCase()
-                .replace(/[\d.]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|splash|sprig|spoon|cube|wedge|peel|slice|leaves)/gi, '')
+                .replace(/[\d.]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|splash|sprig|spoon|cube|wedge|peel|slice|leaves|leaf)/gi, '')
                 .trim()
                 .split(/,| for | and /)[0]
                 .trim();
-            if (mainIngredient) {
+            if (mainIngredient && mainIngredient.length > 2) {
                 ingredientSet.add(mainIngredient);
             }
         });
     });
     allIngredients = Array.from(ingredientSet).sort();
-    renderIngredientFilters();
+    populateIngredientDropdown();
 }
 
-// Render ingredient filter buttons
-function renderIngredientFilters() {
-    const container = document.getElementById('ingredientFilters');
-    container.innerHTML = '';
+// Populate ingredient dropdown
+function populateIngredientDropdown() {
+    const dropdown = document.getElementById('ingredientDropdown');
     
     allIngredients.forEach(ingredient => {
-        const btn = document.createElement('button');
-        btn.className = 'px-3 py-1 rounded-full text-xs transition touch-manipulation bg-white/20 text-white hover:bg-white/30';
-        btn.textContent = ingredient;
-        btn.dataset.ingredient = ingredient;
-        
-        btn.addEventListener('click', () => toggleIngredient(ingredient, btn));
-        container.appendChild(btn);
+        const option = document.createElement('option');
+        option.value = ingredient;
+        option.textContent = ingredient.charAt(0).toUpperCase() + ingredient.slice(1);
+        dropdown.appendChild(option);
     });
 }
 
-// Toggle ingredient selection
-function toggleIngredient(ingredient, btn) {
-    const index = selectedIngredients.indexOf(ingredient);
+// Add ingredient from dropdown
+function addIngredientFilter() {
+    const dropdown = document.getElementById('ingredientDropdown');
+    const ingredient = dropdown.value;
     
-    if (index > -1) {
-        selectedIngredients.splice(index, 1);
-        btn.className = 'px-3 py-1 rounded-full text-xs transition touch-manipulation bg-white/20 text-white hover:bg-white/30';
-    } else {
+    if (!ingredient) return;
+    
+    if (!selectedIngredients.includes(ingredient)) {
         selectedIngredients.push(ingredient);
-        btn.className = 'px-3 py-1 rounded-full text-xs transition touch-manipulation bg-purple-500 text-white hover:bg-purple-600';
+        renderSelectedIngredients();
+        performSearch();
     }
     
-    performSearch();
+    dropdown.value = '';
+}
+
+// Render selected ingredients as pills
+function renderSelectedIngredients() {
+    const container = document.getElementById('selectedIngredients');
+    container.innerHTML = '';
+    
+    if (selectedIngredients.length === 0) {
+        container.innerHTML = '<span class="text-white/60 text-xs">No ingredients selected</span>';
+        return;
+    }
+    
+    selectedIngredients.forEach(ingredient => {
+        const pill = document.createElement('div');
+        pill.className = 'flex items-center gap-2 px-3 py-1 bg-purple-500 text-white rounded-full text-xs';
+        
+        pill.innerHTML = `
+            <span>${ingredient.charAt(0).toUpperCase() + ingredient.slice(1)}</span>
+            <button class="hover:bg-purple-600 rounded-full p-0.5 transition" data-ingredient="${ingredient}">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 18L18 6M6 6l12 12" stroke-width="2"></path>
+                </svg>
+            </button>
+        `;
+        
+        container.appendChild(pill);
+        
+        // Add remove functionality
+        pill.querySelector('button').addEventListener('click', () => {
+            removeIngredient(ingredient);
+        });
+    });
+}
+
+// Remove ingredient
+function removeIngredient(ingredient) {
+    const index = selectedIngredients.indexOf(ingredient);
+    if (index > -1) {
+        selectedIngredients.splice(index, 1);
+        renderSelectedIngredients();
+        performSearch();
+    }
+}
+
+// Clear all filters
+function clearAllFilters() {
+    selectedIngredients = [];
+    renderSelectedIngredients();
+    hideSearchResults();
 }
 
 // Search cocktails
@@ -88,7 +134,7 @@ function performSearch(query = null) {
         });
     }
     
-    // Apply text search and scoring
+    // Apply text search and scoring if there's a query
     if (searchQuery && searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         
@@ -128,6 +174,12 @@ function performSearch(query = null) {
         filtered = scored.filter(c => c.score > 0).sort((a, b) => b.score - a.score);
     }
     
+    // If no search query and no filters, don't show results
+    if ((!searchQuery || !searchQuery.trim()) && selectedIngredients.length === 0) {
+        hideSearchResults();
+        return;
+    }
+    
     // Apply result count limit
     if (resultCount !== 'all') {
         filtered = filtered.slice(0, parseInt(resultCount));
@@ -137,7 +189,7 @@ function performSearch(query = null) {
         displaySearchResults(filtered);
     } else {
         hideSearchResults();
-        alert('No cocktails found. Try different search terms or filters.');
+        alert('No cocktails found matching your search and filters.');
     }
 }
 
@@ -304,6 +356,7 @@ function addCocktail() {
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize ingredient filters
     initializeIngredients();
+    renderSelectedIngredients();
     
     // Search
     document.getElementById('searchBtn').addEventListener('click', () => {
@@ -318,15 +371,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Add ingredient from dropdown
+    document.getElementById('addIngredientBtn').addEventListener('click', addIngredientFilter);
+    
+    document.getElementById('ingredientDropdown').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addIngredientFilter();
+        }
+    });
+    
     // Result count selector
     document.getElementById('resultCount').addEventListener('change', () => {
-        performSearch();
+        const searchQuery = document.getElementById('searchInput').value;
+        if (searchQuery.trim() || selectedIngredients.length > 0) {
+            performSearch();
+        }
     });
     
     // Filter logic toggle
     document.getElementById('filterLogicBtn').addEventListener('click', () => {
         filterLogic = filterLogic === 'OR' ? 'AND' : 'OR';
-        document.getElementById('filterLogicText').textContent = filterLogic;
         const btn = document.getElementById('filterLogicBtn');
         if (filterLogic === 'AND') {
             btn.innerHTML = '<span id="filterLogicText">ALL</span> (AND)';
@@ -339,11 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Clear filters
-    document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-        selectedIngredients = [];
-        renderIngredientFilters();
-        performSearch();
-    });
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearAllFilters);
 
     // Add form
     document.getElementById('addBtn').addEventListener('click', showAddForm);
