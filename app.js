@@ -58,7 +58,7 @@ function performSearch() {
                 <h3>${drink.name}</h3>
                 <p><strong>Type:</strong> ${drink.type}</p>
                 <p><strong>Ingredients:</strong> ${drink.ingredients.join(', ')}</p>
-                <p><strong>Notes:</strong> ${drink.notes}</p>
+                <p><strong>Notes:</strong> ${drink.instructions}</p>
             `;
 
             // Add the card to the results area
@@ -69,3 +69,4 @@ function performSearch() {
         resultsDiv.innerHTML = `<p>Sorry, no drinks found matching **"${query}"**. Try searching for 'Milk' or 'Tequila'.</p>`;
     }
 }
+
