@@ -57,14 +57,24 @@ function initSpeechRecognition() {
                 errorMessage = 'No speech detected. Please try again and speak clearly.';
                 break;
             case 'network':
-                errorMessage = 'Network error occurred.';
-                troubleshootingTip = 'This can happen due to: firewall/VPN blocking, corporate network restrictions, or temporary Google API issues. Try: 1) Disabling VPN 2) Using a different network 3) Waiting a moment and trying again.';
-                console.log('Network error troubleshooting:');
-                console.log('- Check if other Google services work');
-                console.log('- Try disabling browser extensions');
-                console.log('- Check firewall/antivirus settings');
-                console.log('- Current URL:', window.location.href);
-                console.log('- Protocol:', window.location.protocol);
+                errorMessage = 'Network error - This is usually caused by browser/network restrictions, NOT your internet.';
+                troubleshootingTip = 'Solutions to try: 1) Use Chrome browser 2) Disable VPN/proxy 3) Turn off ad-blockers 4) Try incognito mode 5) Use different WiFi network 6) Deploy to custom domain instead of GitHub Pages subdomain.';
+                console.log('=== NETWORK ERROR TROUBLESHOOTING ===');
+                console.log('This error means the browser cannot reach Google\'s speech API.');
+                console.log('Common causes:');
+                console.log('  - VPN or proxy blocking API calls');
+                console.log('  - Browser extensions (ad blockers, privacy tools)');
+                console.log('  - Corporate firewall blocking external APIs');
+                console.log('  - GitHub Pages subdomain CORS issues');
+                console.log('  - Antivirus software blocking connections');
+                console.log('');
+                console.log('Current environment:');
+                console.log('  - URL:', window.location.href);
+                console.log('  - Protocol:', window.location.protocol);
+                console.log('  - Browser:', navigator.userAgent);
+                console.log('  - Online:', navigator.onLine);
+                console.log('');
+                console.log('Try deploying to Netlify, Vercel, or using a custom domain.');
                 break;
             case 'aborted':
                 errorMessage = 'Speech recognition stopped.';
@@ -82,7 +92,7 @@ function initSpeechRecognition() {
         }
         
         showMicStatus(`❌ ${errorMessage} ${troubleshootingTip ? troubleshootingTip : ''}`);
-        setTimeout(() => hideMicStatus(), 8000);
+        setTimeout(() => hideMicStatus(), 10000);
     };
 
     recognition.onend = () => {
