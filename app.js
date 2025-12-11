@@ -52,10 +52,19 @@ function initSpeechRecognition() {
                 errorMessage += 'No speech detected. Please try again.';
                 break;
             case 'network':
-                errorMessage += 'Network error. Please check your connection.';
+                errorMessage += 'Speech recognition requires an internet connection. Please check your connection and try again.';
+                break;
+            case 'aborted':
+                errorMessage = 'Speech recognition stopped.';
+                break;
+            case 'audio-capture':
+                errorMessage += 'No microphone detected. Please connect a microphone and try again.';
+                break;
+            case 'service-not-allowed':
+                errorMessage += 'Speech recognition service is not allowed. This may be due to browser security settings.';
                 break;
             default:
-                errorMessage += event.error;
+                errorMessage += event.error + '. Please try typing your search instead.';
         }
         showMicStatus(errorMessage);
         setTimeout(() => hideMicStatus(), 5000);
@@ -100,7 +109,7 @@ function hideMicStatus() {
 function startListening() {
     if (!recognition) {
         if (!initSpeechRecognition()) {
-            alert('Speech recognition is not supported in this browser. Please try Chrome, Edge, or Safari.');
+            alert('Speech recognition is not supported in this browser. Please try Chrome, Edge, or Safari.\n\nNote: Speech recognition requires an internet connection to work.');
             return;
         }
     }
@@ -110,12 +119,32 @@ function startListening() {
         return;
     }
 
+    // Check if online
+    if (!navigator.onLine) {
+        showMicStatus('Error: No internet connection. Speech recognition requires internet access.');
+        setTimeout(() => hideMicStatus(), 5000);
+        return;
+    }
+
     try {
         recognition.start();
     } catch (error) {
         console.error('Error starting recognition:', error);
-        showMicStatus('Error: Could not start microphone. Please try again.');
-        setTimeout(() => hideMicStatus(), 3000);
+        if (error.name === 'InvalidStateError') {
+            // Recognition is already started, stop and restart
+            recognition.stop();
+            setTimeout(() => {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    showMicStatus('Error: Could not start microphone. Please try again.');
+                    setTimeout(() => hideMicStatus(), 3000);
+                }
+            }, 100);
+        } else {
+            showMicStatus('Error: Could not start microphone. Please try again.');
+            setTimeout(() => hideMicStatus(), 3000);
+        }
     }
 }
 
