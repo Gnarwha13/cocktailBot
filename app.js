@@ -19,18 +19,29 @@ function initializeFilters() {
             // Remove quantities, measurements, and extra descriptors
             let cleanIngredient = ing
                 .toLowerCase()
-                // Remove measurements at the start
-                .replace(/^[\d./]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|cl)\s*/gi, '')
+                // Remove number ranges like "4.1-8.0" or "1-2"
+                .replace(/[\d.]+\s*-\s*[\d.]+/g, '')
+                // Remove standalone numbers with decimals or fractions
+                .replace(/^[\d./]+\s*/g, '')
+                // Remove measurements (oz, ml, tsp, etc.)
+                .replace(/\b[\d./]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|cl|bottle|bottles|barspoon|barspoons|egg|eggs)\b/gi, '')
+                // Remove standalone measurement units
+                .replace(/\b(oz|ml|tsp|tbsp|dash|dashes|cup|cups|cl|bottle|bottles|barspoon|barspoons)\b/gi, '')
                 // Remove "a" or "an" at the start
                 .replace(/^(a|an)\s+/gi, '')
+                // Remove numbers at the start (like "1 egg" -> "egg")
+                .replace(/^\d+\s+/g, '')
                 // Remove descriptors in parentheses
                 .replace(/\([^)]*\)/g, '')
-                // Remove common quantity words
-                .replace(/\s+(for rim|for garnish|optional|fresh|dried|simple|white|dark|aged|blended|spiced)/gi, '')
+                // Remove common quantity/descriptor words
+                .replace(/\s+(for rim|for garnish|optional|fresh|dried|simple|white|dark|aged|blended|spiced|large|small|medium|whole|half|slice|slices|piece|pieces|cube|cubes|wedge|wedges|peel|peels|leaf|leaves|sprig|sprigs|drop|drops)\b/gi, '')
                 .trim();
             
             // Take only the main ingredient (before comma or "and")
             cleanIngredient = cleanIngredient.split(/,| and /)[0].trim();
+            
+            // Remove any remaining numbers or hyphens
+            cleanIngredient = cleanIngredient.replace(/[\d-]/g, '').trim();
             
             if (cleanIngredient && cleanIngredient.length > 2) {
                 ingredientSet.add(cleanIngredient);
@@ -214,12 +225,26 @@ function performSearch(query = null) {
         filtered = filtered.filter(cocktail => {
             // Clean the ingredient list to just ingredient names
             const cocktailIngredients = cocktail.ingredients.map(ing => {
-                // Remove quantities and measurements
+                // Remove quantities, measurements, and descriptors
                 return ing.toLowerCase()
-                    .replace(/^[\d./]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|cl)\s*/gi, '')
+                    // Remove number ranges like "4.1-8.0" or "1-2"
+                    .replace(/[\d.]+\s*-\s*[\d.]+/g, '')
+                    // Remove standalone numbers with decimals or fractions
+                    .replace(/^[\d./]+\s*/g, '')
+                    // Remove measurements and units
+                    .replace(/\b[\d./]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|cl|bottle|bottles|barspoon|barspoons|egg|eggs)\b/gi, '')
+                    // Remove standalone measurement units
+                    .replace(/\b(oz|ml|tsp|tbsp|dash|dashes|cup|cups|cl|bottle|bottles|barspoon|barspoons)\b/gi, '')
+                    // Remove "a" or "an"
                     .replace(/^(a|an)\s+/gi, '')
+                    // Remove numbers at the start
+                    .replace(/^\d+\s+/g, '')
+                    // Remove descriptors in parentheses
                     .replace(/\([^)]*\)/g, '')
-                    .replace(/\s+(for rim|for garnish|optional|fresh|dried|simple|white|dark|aged|blended|spiced)/gi, '')
+                    // Remove descriptor words
+                    .replace(/\s+(for rim|for garnish|optional|fresh|dried|simple|white|dark|aged|blended|spiced|large|small|medium|whole|half|slice|slices|piece|pieces|cube|cubes|wedge|wedges|peel|peels|leaf|leaves|sprig|sprigs|drop|drops|dry|red|sweet)\b/gi, '')
+                    // Remove any remaining numbers or hyphens
+                    .replace(/[\d-]/g, '')
                     .trim();
             });
             
