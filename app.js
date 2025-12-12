@@ -3,27 +3,51 @@ let cocktails = [...cocktailDatabase];
 let currentResults = [];
 let isSpeaking = false;
 let selectedIngredients = [];
+let selectedTags = [];
 let filterLogic = 'OR'; // 'OR' or 'AND'
 let allIngredients = [];
+let allTags = [];
 
-// Extract all unique ingredients from database
-function initializeIngredients() {
+// Extract all unique ingredients and tags from database
+function initializeFilters() {
     const ingredientSet = new Set();
+    const tagSet = new Set();
+    
     cocktails.forEach(cocktail => {
+        // Extract ingredient names only (no quantities)
         cocktail.ingredients.forEach(ing => {
-            // Extract main ingredient name (remove measurements)
-            const mainIngredient = ing.toLowerCase()
-                .replace(/[\d.]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|splash|sprig|spoon|cube|wedge|peel|slice|leaves|leaf)/gi, '')
-                .trim()
-                .split(/,| for | and /)[0]
+            // Remove quantities, measurements, and extra descriptors
+            let cleanIngredient = ing
+                .toLowerCase()
+                // Remove measurements at the start
+                .replace(/^[\d./]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|cl)\s*/gi, '')
+                // Remove "a" or "an" at the start
+                .replace(/^(a|an)\s+/gi, '')
+                // Remove descriptors in parentheses
+                .replace(/\([^)]*\)/g, '')
+                // Remove common quantity words
+                .replace(/\s+(for rim|for garnish|optional|fresh|dried|simple|white|dark|aged|blended|spiced)/gi, '')
                 .trim();
-            if (mainIngredient && mainIngredient.length > 2) {
-                ingredientSet.add(mainIngredient);
+            
+            // Take only the main ingredient (before comma or "and")
+            cleanIngredient = cleanIngredient.split(/,| and /)[0].trim();
+            
+            if (cleanIngredient && cleanIngredient.length > 2) {
+                ingredientSet.add(cleanIngredient);
             }
         });
+        
+        // Extract tags
+        cocktail.tags.forEach(tag => {
+            tagSet.add(tag);
+        });
     });
+    
     allIngredients = Array.from(ingredientSet).sort();
+    allTags = Array.from(tagSet).sort();
+    
     populateIngredientDropdown();
+    populateTagDropdown();
 }
 
 // Populate ingredient dropdown
@@ -38,6 +62,18 @@ function populateIngredientDropdown() {
     });
 }
 
+// Populate tag dropdown
+function populateTagDropdown() {
+    const dropdown = document.getElementById('tagDropdown');
+    
+    allTags.forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        option.textContent = tag.charAt(0).toUpperCase() + tag.slice(1);
+        dropdown.appendChild(option);
+    });
+}
+
 // Add ingredient from dropdown
 function addIngredientFilter() {
     const dropdown = document.getElementById('ingredientDropdown');
@@ -48,6 +84,22 @@ function addIngredientFilter() {
     if (!selectedIngredients.includes(ingredient)) {
         selectedIngredients.push(ingredient);
         renderSelectedIngredients();
+        performSearch();
+    }
+    
+    dropdown.value = '';
+}
+
+// Add tag from dropdown
+function addTagFilter() {
+    const dropdown = document.getElementById('tagDropdown');
+    const tag = dropdown.value;
+    
+    if (!tag) return;
+    
+    if (!selectedTags.includes(tag)) {
+        selectedTags.push(tag);
+        renderSelectedTags();
         performSearch();
     }
     
@@ -79,9 +131,39 @@ function renderSelectedIngredients() {
         
         container.appendChild(pill);
         
-        // Add remove functionality
         pill.querySelector('button').addEventListener('click', () => {
             removeIngredient(ingredient);
+        });
+    });
+}
+
+// Render selected tags as pills
+function renderSelectedTags() {
+    const container = document.getElementById('selectedTags');
+    container.innerHTML = '';
+    
+    if (selectedTags.length === 0) {
+        container.innerHTML = '<span class="text-white/60 text-xs">No tags selected</span>';
+        return;
+    }
+    
+    selectedTags.forEach(tag => {
+        const pill = document.createElement('div');
+        pill.className = 'flex items-center gap-2 px-3 py-1 bg-blue-500 text-white rounded-full text-xs';
+        
+        pill.innerHTML = `
+            <span>${tag.charAt(0).toUpperCase() + tag.slice(1)}</span>
+            <button class="hover:bg-blue-600 rounded-full p-0.5 transition" data-tag="${tag}">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 18L18 6M6 6l12 12" stroke-width="2"></path>
+                </svg>
+            </button>
+        `;
+        
+        container.appendChild(pill);
+        
+        pill.querySelector('button').addEventListener('click', () => {
+            removeTag(tag);
         });
     });
 }
@@ -96,10 +178,22 @@ function removeIngredient(ingredient) {
     }
 }
 
+// Remove tag
+function removeTag(tag) {
+    const index = selectedTags.indexOf(tag);
+    if (index > -1) {
+        selectedTags.splice(index, 1);
+        renderSelectedTags();
+        performSearch();
+    }
+}
+
 // Clear all filters
 function clearAllFilters() {
     selectedIngredients = [];
+    selectedTags = [];
     renderSelectedIngredients();
+    renderSelectedTags();
     hideSearchResults();
 }
 
@@ -115,20 +209,46 @@ function performSearch(query = null) {
     // Start with all cocktails
     let filtered = [...cocktails];
     
-    // Apply ingredient filters
+    // Apply ingredient filters (ingredients only, not quantities)
     if (selectedIngredients.length > 0) {
         filtered = filtered.filter(cocktail => {
-            const cocktailIngredients = cocktail.ingredients.map(ing => ing.toLowerCase());
+            // Clean the ingredient list to just ingredient names
+            const cocktailIngredients = cocktail.ingredients.map(ing => {
+                // Remove quantities and measurements
+                return ing.toLowerCase()
+                    .replace(/^[\d./]+\s*(oz|ml|tsp|tbsp|dash|dashes|cup|cups|cl)\s*/gi, '')
+                    .replace(/^(a|an)\s+/gi, '')
+                    .replace(/\([^)]*\)/g, '')
+                    .replace(/\s+(for rim|for garnish|optional|fresh|dried|simple|white|dark|aged|blended|spiced)/gi, '')
+                    .trim();
+            });
             
             if (filterLogic === 'AND') {
                 // Must have ALL selected ingredients
                 return selectedIngredients.every(selected => 
-                    cocktailIngredients.some(ci => ci.includes(selected))
+                    cocktailIngredients.some(ci => ci.includes(selected) || selected.includes(ci))
                 );
             } else {
                 // Must have ANY selected ingredient
                 return selectedIngredients.some(selected => 
-                    cocktailIngredients.some(ci => ci.includes(selected))
+                    cocktailIngredients.some(ci => ci.includes(selected) || selected.includes(ci))
+                );
+            }
+        });
+    }
+    
+    // Apply tag filters
+    if (selectedTags.length > 0) {
+        filtered = filtered.filter(cocktail => {
+            if (filterLogic === 'AND') {
+                // Must have ALL selected tags
+                return selectedTags.every(selected => 
+                    cocktail.tags.includes(selected)
+                );
+            } else {
+                // Must have ANY selected tag
+                return selectedTags.some(selected => 
+                    cocktail.tags.includes(selected)
                 );
             }
         });
@@ -175,7 +295,7 @@ function performSearch(query = null) {
     }
     
     // If no search query and no filters, don't show results
-    if ((!searchQuery || !searchQuery.trim()) && selectedIngredients.length === 0) {
+    if ((!searchQuery || !searchQuery.trim()) && selectedIngredients.length === 0 && selectedTags.length === 0) {
         hideSearchResults();
         return;
     }
@@ -354,9 +474,10 @@ function addCocktail() {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize ingredient filters
-    initializeIngredients();
+    // Initialize filters
+    initializeFilters();
     renderSelectedIngredients();
+    renderSelectedTags();
     
     // Search
     document.getElementById('searchBtn').addEventListener('click', () => {
@@ -380,10 +501,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // Add tag from dropdown
+    document.getElementById('addTagBtn').addEventListener('click', addTagFilter);
+    
+    document.getElementById('tagDropdown').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addTagFilter();
+        }
+    });
+    
     // Result count selector
     document.getElementById('resultCount').addEventListener('change', () => {
         const searchQuery = document.getElementById('searchInput').value;
-        if (searchQuery.trim() || selectedIngredients.length > 0) {
+        if (searchQuery.trim() || selectedIngredients.length > 0 || selectedTags.length > 0) {
             performSearch();
         }
     });
@@ -397,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             btn.innerHTML = '<span id="filterLogicText">ANY</span> (OR)';
         }
-        if (selectedIngredients.length > 0) {
+        if (selectedIngredients.length > 0 || selectedTags.length > 0) {
             performSearch();
         }
     });
