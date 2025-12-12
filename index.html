@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CocktailBot</title>
+    <title>Cocktail Finder</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @keyframes pulse {
@@ -19,7 +19,7 @@
     <div class="min-h-screen p-4 pb-8">
         <div class="max-w-4xl mx-auto">
             <h1 class="text-4xl sm:text-5xl font-bold text-white text-center mb-2 mt-4 sm:mt-8">
-                🍸 CocktailBot
+                🍸 Cocktail Finder
             </h1>
             <p class="text-purple-200 text-center mb-6 sm:mb-8 text-sm sm:text-base">
                 Search by name, ingredient, or trait
@@ -61,7 +61,7 @@
                 <div class="border-t border-white/20 pt-4 space-y-3">
                     <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
                         <label class="text-white text-sm font-semibold">Show Results:</label>
-                        <select id="resultCount" class="px-3 py-2 rounded-lg bg-white/20 border border-white/30 text-black focus:outline-none focus:ring-2 focus:ring-purple-400">
+                        <select id="resultCount" class="px-3 py-2 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400">
                             <option value="1">Top 1 Result</option>
                             <option value="3">Top 3 Results</option>
                             <option value="5">Top 5 Results</option>
@@ -72,7 +72,7 @@
                     <div>
                         <label class="text-white text-sm font-semibold mb-2 block">Filter by Ingredients:</label>
                         <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
-                            <select id="ingredientDropdown" class="flex-1 px-3 py-2 rounded-lg bg-white/20 border border-black/30 text-black focus:outline-none focus:ring-2 focus:ring-purple-400">
+                            <select id="ingredientDropdown" class="flex-1 px-3 py-2 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400">
                                 <option value="">Select an ingredient...</option>
                             </select>
                             <button id="addIngredientBtn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm transition">
@@ -82,16 +82,31 @@
                         
                         <!-- Selected ingredients -->
                         <div id="selectedIngredients" class="flex flex-wrap gap-2 mt-3 min-h-[2rem]"></div>
-                        
-                        <div class="flex gap-2 items-center mt-2">
-                            <label class="text-white text-xs">Match:</label>
-                            <button id="filterLogicBtn" class="px-3 py-1 rounded-lg bg-white/20 text-white text-xs hover:bg-white/30 transition">
-                                <span id="filterLogicText">ANY</span> (OR)
-                            </button>
-                            <button id="clearFiltersBtn" class="px-3 py-1 rounded-lg bg-red-500/80 text-white text-xs hover:bg-red-600 transition">
-                                Clear All
+                    </div>
+                    
+                    <div>
+                        <label class="text-white text-sm font-semibold mb-2 block">Filter by Tags:</label>
+                        <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                            <select id="tagDropdown" class="flex-1 px-3 py-2 rounded-lg bg-white/20 border border-white/30 text-white focus:outline-none focus:ring-2 focus:ring-purple-400">
+                                <option value="">Select a tag...</option>
+                            </select>
+                            <button id="addTagBtn" class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm transition">
+                                Add
                             </button>
                         </div>
+                        
+                        <!-- Selected tags -->
+                        <div id="selectedTags" class="flex flex-wrap gap-2 mt-3 min-h-[2rem]"></div>
+                    </div>
+                    
+                    <div class="flex gap-2 items-center pt-2">
+                        <label class="text-white text-xs">Match:</label>
+                        <button id="filterLogicBtn" class="px-3 py-1 rounded-lg bg-white/20 text-white text-xs hover:bg-white/30 transition">
+                            <span id="filterLogicText">ANY</span> (OR)
+                        </button>
+                        <button id="clearFiltersBtn" class="px-3 py-1 rounded-lg bg-red-500/80 text-white text-xs hover:bg-red-600 transition">
+                            Clear All
+                        </button>
                     </div>
                 </div>
                 
@@ -183,6 +198,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
-
-
